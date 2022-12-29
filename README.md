@@ -1,2 +1,3 @@
 # Watchtower-Telegram
-A tiny telegram bot that will trigger a watchtower update upon request
+
+A small docker container that will send an HTTP request to a locally running watchtower instance upon a telegram request.
