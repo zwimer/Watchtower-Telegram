@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
+import argparse
 import logging
 import os
 
@@ -11,35 +12,58 @@ if TYPE_CHECKING:
     from telegram import Update
 
 
-host: str = "http://localhost:8080"
-t_var: str = "WATCHTOWER_TELEGRAM_TOKEN"
-w_var: str = "WATCHTOWER_HTTP_API_TOKEN"
+# Pass by env instead of CLI for security
+T_TOKEN_VAR: str = "WATCHTOWER_TELEGRAM_TOKEN"
+W_TOKEN_VAR: str = "WATCHTOWER_HTTP_API_TOKEN"
 
 
-async def do_update(_: Update, __: ContextTypes.DEFAULT_TYPE) -> None:
-    # curl -H "Authorization: Bearer <token>" <host>/v1/update
-    url = f"{host}/v1/update"
-    data = {"Authorization": f"Bearer {os.environ[w_var]}"}
-    logging.info(f"Making request to {url} with headers={data}")
-    r = requests.get(url, headers=data)
-    logging.info(f"Response: {r.text}")
-    r.raise_for_status()
+class Watchtower:
+
+    def __init__(self, watchtower_url: str, token: str) -> None:
+        self._url: str = f"{watchtower_url}/v1/update"
+        self._token: str = token
+
+    async def update(self, _: Update, __: ContextTypes.DEFAULT_TYPE) -> None:
+        """
+        curl -H "Authorization: Bearer <token>" <host>/v1/update
+        """
+        if not self._url or not self._token:
+            raise RuntimeError("init not called")
+        data = {"Authorization": f"Bearer {self._token}"}
+        logging.info("Making request to %s with headers=%s", self._url, data)
+        r = requests.get(self._url, headers=data)
+        logging.debug("Response: %s", r.text)
+        r.raise_for_status()
 
 
-async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def help_cmd(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("/update To update containers")
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
-    app = Application.builder().token(os.environ[t_var]).build()
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", default="localhost", help="The watchtower host")
+    parser.add_argument("--port", default="8080", help="The watchtower port")
+    parser.add_argument(
+        "--protocol",
+        default="http",
+        choices=["http", "https"],
+        help="The watchtower protocol",
+    )
+    parser.add_argument("--log-level", default="WARNING", help="The log level to use")
+    ns = parser.parse_args()
+
+    watchtower = Watchtower(
+        f"{ns.protocol}://{ns.host}:{ns.port}", os.environ[W_TOKEN_VAR]
+    )
+    logging.basicConfig(level=logging.getLevelName(ns.log_level.upper()))
+
+    app = Application.builder().token(os.environ[T_TOKEN_VAR]).build()
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("start", help_cmd))
-    app.add_handler(CommandHandler("update", do_update))
-
+    app.add_handler(CommandHandler("update", watchtower.update))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, help_cmd))
-
     app.run_polling()
 
 
