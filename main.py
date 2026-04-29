@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import TYPE_CHECKING
 import argparse
 import logging
@@ -31,7 +30,7 @@ class Watchtower:
             raise RuntimeError("init not called")
         data = {"Authorization": f"Bearer {self._token}"}
         logging.info("Making request to %s with headers=%s", self._url, data)
-        r = requests.get(self._url, headers=data)
+        r = requests.post(self._url, headers=data, timeout=300)
         logging.debug("Response: %s", r.text)
         r.raise_for_status()
 
