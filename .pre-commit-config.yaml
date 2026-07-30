@@ -92,3 +92,8 @@ repos:
           - --disable=missing-module-docstring
           - --disable=missing-function-docstring
         additional_dependencies: [requests, python-telegram-bot]
+
+-   repo: https://github.com/immanuwell/dockerfile-roast
+    rev: 1.4.11
+    hooks:
+    -   id: droast
