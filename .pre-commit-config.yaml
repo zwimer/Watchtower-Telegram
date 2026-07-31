@@ -78,7 +78,7 @@ repos:
     -   id: rst-inline-touching-normal
 
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.16.0
+    rev: v0.16.1
     hooks:
     - id: ruff
 
@@ -94,6 +94,7 @@ repos:
         additional_dependencies: [requests, python-telegram-bot]
 
 -   repo: https://github.com/immanuwell/dockerfile-roast
-    rev: 1.4.11
+    rev: 1.4.12
     hooks:
     -   id: droast
+        args: ["--config", "pyproject.toml", "--fail-on", "info"]

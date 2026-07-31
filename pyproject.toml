@@ -12,3 +12,12 @@ target-version = ["py314"]
 line-length = 110
 [tool.ruff.lint]
 ignore=["I001"]
+
+[tool.droast]
+preset       = "strict"
+skip         = ["DF011", "DF022", "DF033", "DF051", "DF064"]
+min-severity = "info"
+no-roast     = true
+
+[tool.droast.shellcheck]
+mode = "auto"
