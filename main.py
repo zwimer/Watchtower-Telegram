@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING
 from threading import Lock
 import argparse
 import logging
+import random
+import string
 import os
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
@@ -13,40 +15,38 @@ if TYPE_CHECKING:
     from telegram import Update
 
 
+CHARSET = string.ascii_lowercase + string.ascii_uppercase + string.digits
 LOG_NAME = "watchtower-telegram"
 
 
 class Watchtower:
 
-    __slots__ = ("_count", "_lock", "_token", "_url")
+    __slots__ = ("_headers", "_lock", "_url")
 
     def __init__(self, watchtower_url: str, token: str) -> None:
-        self._count = 0  # For user message clarity
-        self._lock = Lock()
-        self._token = token
+        random.seed(int.from_bytes(os.urandom(4)))
+        self._headers = {"Authorization": f"Bearer {token}"}
         self._url = f"{watchtower_url}/v1/update"
+        self._lock = Lock()
 
     async def update(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         """curl -H "Authorization: Bearer <token>" <host>/v1/update"""
+        prefix = f"Update[id={"".join(random.choices(CHARSET, k=6))}]: "  # noqa: S311
         log = logging.getLogger(LOG_NAME)
         try:
-            with self._lock:  # Don't want concurrent updates
-                # Log the action
-                uid = self._count
-                self._count += 1
-                log.debug("Starting update uid=%d", uid)
-                # Tell the user ACK, no need to wait on this
-                _ = create_task(update.message.reply_text(f"Initiating update {uid}"))
-                # Tell watchtower to update
-                data = {"Authorization": f"Bearer {self._token}"}
-                log.info("Making request to %s with headers=%s", self._url, data)
-                r = await to_thread(requests.post, self._url, headers=data, timeout=300)
-            log.debug("Response: %s", r.text)
+            with self._lock:  # Avoid concurrent updates
+                msg = f"{prefix}Starting"
+                log.debug("%s", msg)
+                _ = create_task(update.message.reply_text(msg))
+                log.info("%sMaking request to %s with headers=%s", prefix, self._url, self._headers)
+                r = await to_thread(requests.post, self._url, headers=self._headers, timeout=300)
+            log.debug("%sResponse: %s", prefix, r.text)
             r.raise_for_status()
         except requests.exceptions.RequestException:
-            log.exception("Update uid=%d failed", uid)
-            await update.message.reply_text(f"Update {uid} failed")
-        await update.message.reply_text(f"Update {uid} complete")
+            msg = f"{prefix}Failed"
+            log.exception("%s", msg)
+            await update.message.reply_text(msg)
+        await update.message.reply_text(f"{prefix}Complete")
 
 
 async def help_cmd(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
