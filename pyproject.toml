@@ -11,13 +11,31 @@ target-version = ["py314"]
 [tool.ruff]
 line-length = 110
 [tool.ruff.lint]
-ignore=["I001"]
+ignore=["I001", "D10", "D403", "D415"]
+extend-select = [
+	"ANN",
+	"ARG",
+	"ASYNC",
+	"C4",
+	"D",
+	"DTZ",
+	"PERF",
+	"PGH",
+	"PIE",
+	"PL",
+	"PTH",
+	"RET",
+	"S",
+	"SIM",
+	"TID"
+]
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.droast]
 preset       = "strict"
 skip         = ["DF011", "DF022", "DF033", "DF051", "DF064"]
 min-severity = "info"
 no-roast     = true
-
 [tool.droast.shellcheck]
 mode = "auto"
